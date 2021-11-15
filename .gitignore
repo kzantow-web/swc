@@ -1,5 +1,6 @@
 # Built files
 /*.js
+!jest.config.js
 /*.map
 /*.d.ts
 native/artifacts.json
@@ -9,12 +10,11 @@ artifacts.json
 
 target/
 **/*.bk
-core
 *.log
-Cargo.lock
 
 .vscode/*
 !.vscode/settings.json
+*.swp
 
 /.idea
 *.iml
@@ -43,5 +43,11 @@ package-lock.json
 
 pkg/
 
-yarn.lock
 .idea/
+
+
+# Generated while testing
+*.tmp.js
+
+# Used to see output of babel.
+/lab

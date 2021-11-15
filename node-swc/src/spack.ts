@@ -22,7 +22,11 @@ export async function compileBundleOptions(config: BundleInput | string | undefi
             }
             return configFromFile;
         }
-        return Object.assign({}, configFromFile, config);
+
+        return {
+            ...configFromFile,
+            ...(typeof config === 'string') ? {} : config
+        };
     } catch (e) {
         if (typeof f === 'string') {
             throw new Error(`Error occurred while loading config file at ${config}: ${e}`);
@@ -33,17 +37,17 @@ export async function compileBundleOptions(config: BundleInput | string | undefi
 
 /**
  * Usage: In `spack.config.js` / `spack.config.ts`, you can utilize type annotations (to get autocompletions) like
- * 
+ *
  * ```ts
  * import { config } from '@swc/core/spack';
- * 
+ *
  * export default config({
  *      name: 'web',
  * });
  * ```
- * 
- * 
- * 
+ *
+ *
+ *
  */
 export function config(c: BundleInput): BundleInput {
     return c
@@ -62,6 +66,8 @@ export interface SpackConfig {
      */
     mode?: Mode
 
+    target?: Target
+
     entry: EntryConfig,
 
     output: OutputConfig
@@ -73,7 +79,7 @@ export interface SpackConfig {
     /**
      * Modules to exclude from bundle.
      */
-    extenalModules?: string[]
+    externalModules?: string[]
 }
 
 export interface OutputConfig {
@@ -87,6 +93,7 @@ export interface ModuleConfig {
 }
 
 export type Mode = 'production' | 'development' | 'none';
+export type Target = 'browser' | 'node';
 
 export type EntryConfig = string | string[] | {
     [name: string]: string

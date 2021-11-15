@@ -37,7 +37,7 @@ import {
   ExportDefaultExpression,
   ExportDefaultSpecifier,
   ExportNamedDeclaration,
-  ExportNamespaceSpecifer,
+  ExportNamespaceSpecifier,
   ExportSpecifier,
   Expression,
   ExpressionStatement,
@@ -156,15 +156,17 @@ import {
   WithStatement,
   YieldExpression,
   Param,
+  ExprOrSpread,
+  TsConstAssertion,
 } from "./types";
 
-export default class Visitor {
+export class Visitor {
   visitProgram(n: Program): Program {
     switch (n.type) {
       case "Module":
         return this.visitModule(n);
       case "Script":
-        return this.visitScript(n);
+        return this.visitScript(n)
     }
   }
 
@@ -206,13 +208,13 @@ export default class Visitor {
       case "ExportDefaultDeclaration":
         return this.visitExportDefaultDeclaration(n);
       case "ExportNamedDeclaration":
-        return this.visitExportNamedDeclration(n);
+        return this.visitExportNamedDeclaration(n);
       case "ExportDefaultExpression":
         return this.visitExportDefaultExpression(n);
       case "ImportDeclaration":
         return this.visitImportDeclaration(n);
       case "ExportAllDeclaration":
-        return this.visitExportAllDeclration(n);
+        return this.visitExportAllDeclaration(n);
       case "TsImportEqualsDeclaration":
         return this.visitTsImportEqualsDeclaration(n);
       case "TsExportAssignment":
@@ -261,7 +263,7 @@ export default class Visitor {
     return n;
   }
 
-  visitExportAllDeclration(n: ExportAllDeclaration): ModuleDeclaration {
+  visitExportAllDeclaration(n: ExportAllDeclaration): ModuleDeclaration {
     n.source = this.visitStringLiteral(n.source);
     return n;
   }
@@ -271,7 +273,7 @@ export default class Visitor {
     return n;
   }
 
-  visitExportNamedDeclration(n: ExportNamedDeclaration): ModuleDeclaration {
+  visitExportNamedDeclaration(n: ExportNamedDeclaration): ModuleDeclaration {
     n.specifiers = this.visitExportSpecifiers(n.specifiers);
     n.source = this.visitOptionalStringLiteral(n.source);
     return n;
@@ -285,7 +287,7 @@ export default class Visitor {
     switch (n.type) {
       case "ExportDefaultSpecifier":
         return this.visitExportDefaultSpecifier(n);
-      case "ExportNamespaceSpecifer":
+      case "ExportNamespaceSpecifier":
         return this.visitExportNamespaceSpecifier(n);
       case "ExportSpecifier":
         return this.visitNamedExportSpecifier(n);
@@ -299,7 +301,7 @@ export default class Visitor {
     return n;
   }
 
-  visitExportNamespaceSpecifier(n: ExportNamespaceSpecifer): ExportSpecifier {
+  visitExportNamespaceSpecifier(n: ExportNamespaceSpecifier): ExportSpecifier {
     n.name = this.visitBindingIdentifier(n.name);
     return n;
   }
@@ -364,12 +366,18 @@ export default class Visitor {
   }
 
   visitArrayElement(
-    e: Expression | SpreadElement | undefined
-  ): Expression | SpreadElement | undefined {
-    if (e && e.type === "SpreadElement") {
-      return this.visitSpreadElement(e);
+    e: ExprOrSpread | undefined
+  ): ExprOrSpread | undefined {
+    if (e) {
+      return this.visitExprOrSpread(e);
     }
-    return this.visitOptionalExpression(e as Expression | undefined);
+  }
+
+  visitExprOrSpread(e: ExprOrSpread): ExprOrSpread {
+    return {
+      ...e,
+      expression: this.visitExpression(e.expression)
+    }
   }
 
   visitSpreadElement(e: SpreadElement): SpreadElement {
@@ -612,7 +620,7 @@ export default class Visitor {
   visitDeclaration(decl: Declaration): Declaration {
     switch (decl.type) {
       case "ClassDeclaration":
-        return this.visitClassDeclartion(decl);
+        return this.visitClassDeclaration(decl);
       case "FunctionDeclaration":
         return this.visitFunctionDeclaration(decl);
       case "TsEnumDeclaration":
@@ -721,7 +729,7 @@ export default class Visitor {
 
   visitTsEnumDeclaration(n: TsEnumDeclaration): Declaration {
     n.id = this.visitIdentifier(n.id);
-    n.member = this.visitTsEnumMembers(n.member);
+    n.members = this.visitTsEnumMembers(n.members);
     return n;
   }
 
@@ -751,7 +759,7 @@ export default class Visitor {
     return decl;
   }
 
-  visitClassDeclartion(decl: ClassDeclaration): Declaration {
+  visitClassDeclaration(decl: ClassDeclaration): Declaration {
     decl = this.visitClass(decl);
     decl.identifier = this.visitIdentifier(decl.identifier);
     return decl;
@@ -1068,6 +1076,8 @@ export default class Visitor {
         return this.visitTsNonNullExpression(n);
       case "TsTypeAssertion":
         return this.visitTsTypeAssertion(n);
+      case "TsConstAssertion":
+        return this.visitTsConstAssertion(n);
       case "UnaryExpression":
         return this.visitUnaryExpression(n);
       case "UpdateExpression":
@@ -1122,6 +1132,12 @@ export default class Visitor {
   visitTsTypeAssertion(n: TsTypeAssertion): Expression {
     n.expression = this.visitExpression(n.expression);
     n.typeAnnotation = this.visitTsType(n.typeAnnotation);
+    return n;
+  }
+
+
+  visitTsConstAssertion(n: TsConstAssertion): Expression {
+    n.expression = this.visitExpression(n.expression);
     return n;
   }
 
@@ -1415,7 +1431,7 @@ export default class Visitor {
   visitJSXOpeningElement(n: JSXOpeningElement): JSXOpeningElement {
     n.name = this.visitJSXElementName(n.name);
     n.typeArguments = this.visitTsTypeParameterInstantiation(n.typeArguments);
-    n.attrs = this.visitJSXAttributes(n.attrs);
+    n.attributes = this.visitJSXAttributes(n.attributes);
     return n;
   }
 
@@ -1650,7 +1666,7 @@ export default class Visitor {
   }
 
   visitObjectPattern(n: ObjectPattern): Pattern {
-    n.props = this.visitObjectPatternProperties(n.props || []);
+    n.properties = this.visitObjectPatternProperties(n.properties || []);
     n.typeAnnotation = this.visitTsTypeAnnotation(n.typeAnnotation);
     return n;
   }
@@ -1707,3 +1723,5 @@ export default class Visitor {
     return n;
   }
 }
+
+export default Visitor;

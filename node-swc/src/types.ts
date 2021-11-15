@@ -12,6 +12,212 @@ export type ParseOptions = ParserConfig & {
   target?: JscTarget;
 };
 
+export type TerserEcmaVersion = 5 | 2015 | 2016 | string | number;
+
+export interface JsMinifyOptions {
+  compress?: TerserCompressOptions | boolean,
+
+  mangle?: TerserMangleOptions | boolean,
+
+  ecma?: TerserEcmaVersion,
+
+  keep_classnames?: boolean,
+
+  keep_fnames?: boolean,
+
+  module?: boolean,
+
+  safari10?: boolean
+
+  toplevel?: boolean
+
+  sourceMap?: boolean
+
+  outputPath?: string
+
+  inlineSourcesContent?: boolean
+}
+
+export interface TerserCompressOptions {
+  arguments?: boolean,
+  arrows?: boolean,
+
+
+  booleans?: boolean,
+
+
+  booleans_as_integers?: boolean,
+
+
+  collapse_vars?: boolean,
+
+
+  comparisons?: boolean,
+
+
+  computed_props?: boolean,
+
+
+  conditionals?: boolean,
+
+
+  dead_code?: boolean,
+
+  defaults?: boolean,
+
+
+  directives?: boolean,
+
+
+  drop_console?: boolean,
+
+
+  drop_debugger?: boolean,
+
+  ecma?: TerserEcmaVersion,
+
+
+  evaluate?: boolean,
+
+
+  expression?: boolean,
+
+
+  global_defs?: any,
+
+
+  hoist_funs?: boolean,
+
+
+  hoist_props?: boolean,
+
+
+  hoist_vars?: boolean,
+
+
+  ie8?: boolean,
+
+
+  if_return?: boolean,
+
+
+  inline?: 0 | 1 | 2 | 3
+
+
+  join_vars?: boolean,
+
+
+  keep_classnames?: boolean,
+
+
+  keep_fargs?: boolean,
+
+
+  keep_fnames?: boolean,
+
+
+  keep_infinity?: boolean,
+
+
+  loops?: boolean,
+  // module        : false,
+
+  negate_iife?: boolean,
+
+
+  passes?: number,
+
+
+  properties?: boolean,
+
+
+  pure_getters?: any,
+
+
+  pure_funcs?: string[],
+
+
+  reduce_funcs?: boolean,
+
+
+  reduce_vars?: boolean,
+
+
+  sequences?: any,
+
+
+  side_effects?: boolean,
+
+
+  switches?: boolean,
+
+
+  top_retain?: any,
+
+
+  toplevel?: any,
+
+
+  typeofs?: boolean,
+
+
+  unsafe_passes?: boolean,
+
+
+  unsafe_arrows?: boolean,
+
+
+  unsafe_comps?: boolean,
+
+
+  unsafe_function?: boolean,
+
+
+  unsafe_math?: boolean,
+
+
+  unsafe_symbols?: boolean,
+
+
+  unsafe_methods?: boolean,
+
+
+  unsafe_proto?: boolean,
+
+
+  unsafe_regexp?: boolean,
+
+
+  unsafe_undefined?: boolean,
+
+
+  unused?: boolean,
+
+
+  module?: boolean,
+}
+
+export interface TerserMangleOptions {
+  props?: TerserManglePropertiesOptions,
+
+  top_level?: boolean,
+
+  keep_class_names?: boolean,
+
+  keep_fn_names?: boolean,
+
+  keep_private_props?: boolean,
+
+  ie8?: boolean,
+
+  safari10?: boolean,
+}
+
+export interface TerserManglePropertiesOptions {
+
+}
+
+
 /**
  * Programmatic options.
  */
@@ -175,6 +381,12 @@ export interface Options extends Config {
   plugin?: Plugin;
 
   isModule?: boolean;
+
+  /**
+   * Destination path. Note that this value is used only to fix source path
+   * of source map files and swc does not write output to this path.
+   */
+  outputPath?: string
 }
 
 export interface CallerOptions {
@@ -189,11 +401,11 @@ export type Swcrc = Config | Config[];
  */
 export interface Config {
   /**
-   * Note: The type is string beacuse it follow rust's regex syntax.
+   * Note: The type is string because it follow rust's regex syntax.
    */
   test?: string | string[];
   /**
-   * Note: The type is string beacuse it follow rust's regex syntax.
+   * Note: The type is string because it follow rust's regex syntax.
    */
   exclude?: string | string[];
   env?: EnvConfig;
@@ -213,6 +425,8 @@ export interface Config {
    *  and handle the rest in your own code, depending on your use case.
    */
   sourceMaps?: boolean | "inline";
+
+  inlineSourcesContent?: boolean
 }
 
 /**
@@ -270,6 +484,21 @@ export interface JscConfig {
    * Defaults to `es3` (which enableds **all** pass).
    */
   target?: JscTarget;
+
+  /**
+   * Keep class names.
+   */
+  keepClassNames?: boolean
+
+  experimetal?: {
+    optimizeHygiene?: boolean
+  },
+
+  paths?: {
+    [from: string]: [string]
+  }
+
+  minify?: JsMinifyOptions;
 }
 
 export type JscTarget =
@@ -280,7 +509,9 @@ export type JscTarget =
   | "es2017"
   | "es2018"
   | "es2019"
-  | "es2020";
+  | "es2020"
+  | "es2021"
+  | "es2022";
 
 export type ParserConfig = TsParserConfig | EsParserConfig;
 export interface TsParserConfig {
@@ -306,23 +537,19 @@ export interface EsParserConfig {
    */
   jsx?: boolean;
   /**
-   * Defaults to `false`.
-   *
    * @deprecated Always true because it's in ecmascript spec.
    */
   numericSeparator?: boolean;
   /**
-   * Defaults to `false`
+   * @deprecated Always true because it's in ecmascript spec.
    */
   classPrivateProperty?: boolean;
   /**
-   * Defaults to `false`
-   *
    * @deprecated Always true because it's in ecmascript spec.
    */
   privateMethod?: boolean;
   /**
-   * Defaults to `false`
+   * @deprecated Always true because it's in ecmascript spec.
    */
   classProperty?: boolean;
   /**
@@ -340,25 +567,35 @@ export interface EsParserConfig {
   /**
    * Defaults to `false`
    */
+  exportDefaultFrom?: boolean;
+  /**
+   * @deprecated Always true because it's in ecmascript spec.
+   */
+  exportNamespaceFrom?: boolean;
+  /**
+   * @deprecated Always true because it's in ecmascript spec.
+   */
   dynamicImport?: boolean;
   /**
-   * Defaults to `false`
-   *
    * @deprecated Always true because it's in ecmascript spec.
    */
   nullishCoalescing?: boolean;
   /**
-   * Defaults to `false`
+   * @deprecated Always true because it's in ecmascript spec.
    */
-  exportDefaultFrom?: boolean;
+  optionalChaining?: boolean;
   /**
-   * Defaults to `false`
-   */
-  exportNamespaceFrom?: boolean;
-  /**
-   * Defaults to `false`
+   * @deprecated Always true because it's in ecmascript spec.
    */
   importMeta?: boolean;
+  /**
+   * @deprecated Always true because it's in ecmascript spec.
+   */
+  topLevelAwait?: boolean;
+  /**
+   * Defaults to `false`
+   */
+  importAssertions?: boolean;
 }
 
 /**
@@ -394,13 +631,13 @@ export interface ReactConfig {
    *
    * Defaults to `React.createElement`.
    */
-  pragma: String;
+  pragma?: string;
   /**
    * Replace the component used when compiling JSX fragments.
    *
    * Defaults to `React.Fragment`
    */
-  pragmaFrag: String;
+  pragmaFrag?: string;
   /**
    * Toggles whether or not to throw an error if a XML namespaced tag name is used. For example:
    * `<f:image />`
@@ -409,7 +646,7 @@ export interface ReactConfig {
    * JSX does not currently have support for it.
    *
    */
-  throwIfNamespace: boolean;
+  throwIfNamespace?: boolean;
   /**
    * Toggles plugins that aid in development, such as @swc/plugin-transform-react-jsx-self
    * and @swc/plugin-transform-react-jsx-source.
@@ -417,11 +654,26 @@ export interface ReactConfig {
    * Defaults to `false`,
    *
    */
-  development: boolean;
+  development?: boolean;
   /**
    * Use `Object.assign()` instead of `_extends`. Defaults to false.
    */
-  useBuiltins: boolean;
+  useBuiltins?: boolean;
+
+  /**
+   * Enable fast refresh feature for React app
+   */
+  refresh?: boolean;
+
+  /**
+   * jsx runtime
+   */
+  runtime?: 'automatic' | 'classic'
+
+  /**
+   * Declares the module specifier to be used for importing the `jsx` and `jsxs` factory functions when using `runtime` 'automatic'
+   */
+  importSource?: string
 }
 /**
  *  - `import { DEBUG } from '@ember/env-flags';`
@@ -464,7 +716,7 @@ export interface GlobalPassOption {
   envs?: string[];
 }
 
-export type ModuleConfig = CommonJsConfig | UmdConfig | AmdConfig;
+export type ModuleConfig = Es6Config | CommonJsConfig | UmdConfig | AmdConfig;
 
 export interface BaseModuleConfig {
   /**
@@ -484,7 +736,7 @@ export interface BaseModuleConfig {
    *
    * Defaults to `true`.
    */
-  strict_mode?: boolean;
+  strictMode?: boolean;
 
   /**
    * Changes Babel's compiled import statements to be lazily evaluated when their imported bindings are used for the first time.
@@ -534,6 +786,10 @@ export interface BaseModuleConfig {
   noInterop?: boolean;
 }
 
+export interface Es6Config extends BaseModuleConfig {
+  type: "es6";
+}
+
 export interface CommonJsConfig extends BaseModuleConfig {
   type: "commonjs";
 }
@@ -545,7 +801,7 @@ export interface UmdConfig extends BaseModuleConfig {
 
 export interface AmdConfig extends BaseModuleConfig {
   type: "amd";
-  moduleId: string;
+  moduleId?: string;
 }
 
 export interface Output {
@@ -770,6 +1026,7 @@ export type Expression =
   | JSXElement
   | JSXFragment
   | TsTypeAssertion
+  | TsConstAssertion
   | TsNonNullExpression
   | TsAsExpression
   | PrivateName
@@ -793,7 +1050,12 @@ export interface ThisExpression extends ExpressionBase {
 export interface ArrayExpression extends ExpressionBase {
   type: "ArrayExpression";
 
-  elements: (Expression | SpreadElement | undefined)[];
+  elements: (ExprOrSpread | undefined)[];
+}
+
+export interface ExprOrSpread {
+  spread?: Span,
+  expression: Expression
 }
 
 export interface ObjectExpression extends ExpressionBase {
@@ -1067,7 +1329,7 @@ export interface JSXOpeningElement extends Node, HasSpan {
 
   name: JSXElementName;
 
-  attrs?: JSXAttributeOrSpread[];
+  attributes?: JSXAttributeOrSpread[];
 
   selfClosing: boolean;
 
@@ -1202,6 +1464,8 @@ export interface ExportDeclaration extends Node, HasSpan {
 export interface ImportDeclaration extends Node, HasSpan {
   type: "ImportDeclaration";
 
+  typeOnly?: boolean;
+
   specifiers: ImportSpecifier[];
 
   source: StringLiteral;
@@ -1274,15 +1538,15 @@ export interface NamedImportSpecifier extends Node, HasSpan {
 }
 
 export type ExportSpecifier =
-  | ExportNamespaceSpecifer
+  | ExportNamespaceSpecifier
   | ExportDefaultSpecifier
   | NamedExportSpecifier;
 
 /**
  * `export * as foo from 'src';`
  */
-export interface ExportNamespaceSpecifer extends Node, HasSpan {
-  type: "ExportNamespaceSpecifer";
+export interface ExportNamespaceSpecifier extends Node, HasSpan {
+  type: "ExportNamespaceSpecifier";
 
   name: Identifier;
 }
@@ -1397,7 +1661,7 @@ export interface ArrayPattern extends Node, HasSpan, PatternBase {
 export interface ObjectPattern extends Node, HasSpan, PatternBase {
   type: "ObjectPattern";
 
-  props: ObjectPatternProperty[];
+  properties: ObjectPatternProperty[];
 }
 
 export interface AssignmentPattern extends Node, HasSpan, PatternBase {
@@ -2014,7 +2278,7 @@ export interface TsEnumDeclaration extends Node, HasSpan {
   declare: boolean;
   is_const: boolean;
   id: Identifier;
-  member: TsEnumMember[];
+  members: TsEnumMember[];
 }
 
 export interface TsEnumMember extends Node, HasSpan {
@@ -2098,6 +2362,12 @@ export interface TsTypeAssertion extends ExpressionBase {
 
   expression: Expression;
   typeAnnotation: TsType;
+}
+
+export interface TsConstAssertion extends ExpressionBase {
+  type: "TsConstAssertion";
+
+  expression: Expression;
 }
 
 export interface TsNonNullExpression extends ExpressionBase {

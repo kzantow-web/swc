@@ -6,6 +6,7 @@ import {
   Options,
   Script,
   Program,
+  JsMinifyOptions,
 } from "./types";
 export * from "./types";
 import { BundleInput, compileBundleOptions } from "./spack";
@@ -29,26 +30,35 @@ export function plugins(ps: Plugin[]): Plugin {
 }
 
 export class Compiler {
+
+  async minify(src: string, opts?: JsMinifyOptions): Promise<Output> {
+    return bindings.minify(toBuffer(src), toBuffer(opts ?? {}));
+  }
+
+  minifySync(src: string, opts?: JsMinifyOptions): Output {
+    return bindings.minifySync(toBuffer(src), toBuffer(opts ?? {}));
+  }
+
   parse(
     src: string,
     options: ParseOptions & { isModule: false }
   ): Promise<Script>;
-  parse(src: string, options?: ParseOptions): Promise<Module>;
-  async parse(src: string, options?: ParseOptions): Promise<Program> {
+  parse(src: string, options?: ParseOptions, filename?: string): Promise<Module>;
+  async parse(src: string, options?: ParseOptions, filename?: string): Promise<Program> {
     options = options || { syntax: "ecmascript" };
     options.syntax = options.syntax || "ecmascript";
 
-    const res = await bindings.parse(src, toBuffer(options));
+    const res = await bindings.parse(src, toBuffer(options), filename);
     return JSON.parse(res);
   }
 
   parseSync(src: string, options: ParseOptions & { isModule: false }): Script;
-  parseSync(src: string, options?: ParseOptions): Module;
-  parseSync(src: string, options?: ParseOptions): Program {
+  parseSync(src: string, options?: ParseOptions, filename?: string): Module;
+  parseSync(src: string, options?: ParseOptions, filename?: string): Program {
     options = options || { syntax: "ecmascript" };
     options.syntax = options.syntax || "ecmascript";
 
-    return JSON.parse(bindings.parseSync(src, toBuffer(options)));
+    return JSON.parse(bindings.parseSync(src, toBuffer(options), filename));
   }
 
   parseFile(
@@ -56,11 +66,11 @@ export class Compiler {
     options: ParseOptions & { isModule: false }
   ): Promise<Script>;
   parseFile(path: string, options?: ParseOptions): Promise<Module>;
-  parseFile(path: string, options?: ParseOptions): Promise<Program> {
+  async parseFile(path: string, options?: ParseOptions): Promise<Program> {
     options = options || { syntax: "ecmascript" };
     options.syntax = options.syntax || "ecmascript";
 
-    const res = bindings.parseFile(path, toBuffer(options));
+    const res = await bindings.parseFile(path, toBuffer(options));
 
     return JSON.parse(res);
   }
@@ -111,7 +121,7 @@ export class Compiler {
     if (plugin) {
       const m =
         typeof src === "string"
-          ? await this.parse(src, options?.jsc?.parser)
+          ? await this.parse(src, options?.jsc?.parser, options.filename)
           : src;
       return this.transform(plugin(m), newOptions);
     }
@@ -132,7 +142,7 @@ export class Compiler {
 
     if (plugin) {
       const m =
-        typeof src === "string" ? this.parseSync(src, options?.jsc?.parser) : src;
+        typeof src === "string" ? this.parseSync(src, options?.jsc?.parser, options.filename) : src;
       return this.transformSync(plugin(m), newOptions);
     }
 
@@ -150,8 +160,8 @@ export class Compiler {
       options.jsc.parser.syntax = options.jsc.parser.syntax ?? 'ecmascript';
     }
 
-
     const { plugin, ...newOptions } = options;
+    newOptions.filename = path;
 
     if (plugin) {
       const m = await this.parseFile(path, options?.jsc?.parser);
@@ -170,6 +180,7 @@ export class Compiler {
 
 
     const { plugin, ...newOptions } = options;
+    newOptions.filename = path;
 
     if (plugin) {
       const m = this.parseFileSync(path, options?.jsc?.parser);
@@ -284,6 +295,14 @@ export function bundle(
   options?: BundleInput | string
 ): Promise<{ [name: string]: Output }> {
   return compiler.bundle(options)
+}
+
+export async function minify(src: string, opts?: JsMinifyOptions): Promise<Output> {
+  return compiler.minify(src, opts);
+}
+
+export function minifySync(src: string, opts?: JsMinifyOptions): Output {
+  return compiler.minifySync(src, opts);
 }
 
 export const DEFAULT_EXTENSIONS = Object.freeze([

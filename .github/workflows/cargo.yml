@@ -13,8 +13,10 @@ on: [push, pull_request]
 #      - 'trying'
 
 env:
+  CI: 1
   CARGO_INCREMENTAL: 0
   RUST_LOG: "debug"
+  SWC_CACHE_TEST: 1
 
 jobs:
   check-license:
@@ -39,6 +41,8 @@ jobs:
   fmt:
     name: fmt
     runs-on: ubuntu-latest
+    env:
+      RUST_LOG: "0"
     steps:
       - uses: actions/checkout@v2
 
@@ -61,9 +65,16 @@ jobs:
         os:
           - ubuntu-latest
           - macos-10.15
-          - windows-2019
+          - windows-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
 
       # We explicitly do this to cache properly.
       - name: Install Rust
@@ -78,43 +89,56 @@ jobs:
             ~/.cargo/
             target
             Cargo.lock
-          key: ${{ runner.os }}-cargo-v3
+          key: cargo-dev--${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-dev--${{ runner.os }}
+
       # Ensure that all components are compilable.
       - name: Run cargo check for all targets
         run: cargo check --color always --all --all-targets
   test:
     name: Test
-    needs:
-      - check
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
-          - macos-10.15
-          - windows-2019
+          # - macos-10.15
+          - windows-latest
         crate:
           - ast_node
           - enum_kind
           - from_variant
           - jsdoc
-          - spack
+          - node
           - string_enum
           - swc
           - swc_atoms
+          - swc_babel_ast
+          - swc_babel_compat
+          - swc_babel_visit
           - swc_bundler
           - swc_common
+          - swc_css
+          - swc_css_ast
+          - swc_css_codegen
+          - swc_css_codegen_macros
+          - swc_css_parser
+          - swc_css_utils
+          - swc_css_visit
           - swc_ecma_ast
           - swc_ecma_codegen
           - swc_ecma_codegen_macros
           - swc_ecma_dep_graph
           - swc_ecma_ext_transforms
           - swc_ecma_loader
+          - swc_ecma_minifier
           - swc_ecma_parser
           - swc_ecma_preset_env
           - swc_ecma_transforms
           - swc_ecma_transforms_base
+          - swc_ecma_transforms_classes
           - swc_ecma_transforms_compat
           - swc_ecma_transforms_macros
           - swc_ecma_transforms_module
@@ -128,13 +152,21 @@ jobs:
           - swc_ecmascript
           - swc_eq_ignore_macros
           - swc_macros_common
+          - swc_node_base
+          - swc_node_bundler
+          - swc_plugin
+          - swc_plugin_api
+          - swc_plugin_runner
+          - swc_plugin_testing
+          - swc_stylis
           - swc_visit
           - swc_visit_macros
           - testing
           - testing_macros
+          - wasm
         exclude:
-          - os: windows-2019
-            crate: spack
+          - os: windows-latest
+            crate: swc_node_bundler
 
     steps:
       - name: Handle line endings
@@ -146,6 +178,11 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      # Source map format
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+
       # We explicitly do this to cache properly.
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -154,9 +191,10 @@ jobs:
 
       - uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: 16
 
-      - uses: denolib/setup-deno@v2
+      - uses: denoland/setup-deno@v1
+        if: matrix.crate == 'swc_bundler'
         with:
           deno-version: v1.x
 
@@ -172,8 +210,8 @@ jobs:
         run: |
           # This does not have any effect on windows.
           npm config set prefix $HOME/npm
-          npm i browserslist regenerator-runtime sourcemap-validator progress
-          npm i
+          yarn
+          (cd crates/swc_ecma_transforms && yarn)
           npm i -g jest
           echo $HOME
           echo $HOME/npm/bin >> $GITHUB_PATH
@@ -196,12 +234,31 @@ jobs:
             ~/.cargo/
             target
             Cargo.lock
-          key: ${{ runner.os }}-cargo-v3
+          key: cargo-dev--${{ runner.os }}-${{ matrix.crate }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-dev--${{ runner.os }}-${{ matrix.crate }}
 
       - name: Run cargo test
         run: |
           jest -v
           cargo test --color always -p ${{ matrix.crate }}
+
+      - name: Run cargo test (swc_ecma_transforms)
+        if: matrix.crate == 'swc_ecma_transforms'
+        run: |
+          cargo test --color always -p swc_ecma_transforms --all-features
+
+      - name: Run cargo test (concurrent)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./scripts/ci/test-concurrent.sh ${{ matrix.crate }}
+
+      - name: Run cargo test (swc, concurrent)
+        shell: bash
+        if: matrix.crate == 'swc'
+        run: |
+          cargo test --color always -p swc --features concurrent
 
   deploy-docs:
     name: Docs
@@ -216,10 +273,9 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-03-30
 
       - name: Create rustdoc
-        run: cargo +nightly-2021-03-30 doc
+        run: cargo doc --all
 
       - name: Create CNAME
         run: |
@@ -233,7 +289,7 @@ jobs:
           branch: gh-pages
           folder: target/doc
           clean: true
-          git-config-email: kdy1997.dev@gmail.com
+          git-config-email: github-bot@swc.rs
           repository-name: swc-project/rustdoc
           commit-message: "Update"
           single-commit: true
